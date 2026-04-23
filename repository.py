@@ -1,10 +1,12 @@
-from dagster import job, op
+from dagster import Definitions
 
+from pipeline_random_calculator import (
+    mean_asset,
+    mean_calculator_job,
+    random_numbers_asset,
+)
 
-@op
-def hello():
-    print("Hello, Dagster!")
-
-@job
-def hello_job():
-    hello()
+defs = Definitions(
+    assets=[random_numbers_asset, mean_asset],
+    jobs=[mean_calculator_job],
+)

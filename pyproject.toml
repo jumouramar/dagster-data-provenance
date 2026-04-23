@@ -6,4 +6,5 @@ dependencies = [
     "dagster",
     "dagster-webserver",
     "dagster-postgres",
+    "numpy",
 ]
