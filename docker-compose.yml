@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  dagster:
+    build: .
+    container_name: dagster_app
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+    environment:
+      - DAGSTER_HOME=/app
+    depends_on:
+      - postgres
+
+  daemon:
+    build: .
+    container_name: dagster_daemon
+    command: dagster-daemon run
+    volumes:
+      - .:/app
+    environment:
+      - DAGSTER_HOME=/app
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:13
+    container_name: dagster_postgres
+    environment:
+      POSTGRES_USER: dagster
+      POSTGRES_PASSWORD: dagster
+      POSTGRES_DB: dagster
+    ports:
+      - "5432:5432"
