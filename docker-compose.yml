@@ -3,7 +3,7 @@ version: "3.8"
 services:
   dagster:
     build: .
-    container_name: dagster_app
+    container_name: dagster_data_provenance_app
     ports:
       - "3000:3000"
     volumes:
@@ -15,7 +15,7 @@ services:
 
   daemon:
     build: .
-    container_name: dagster_daemon
+    container_name: dagster_data_provenance_daemon
     command: dagster-daemon run
     volumes:
       - .:/app
@@ -26,7 +26,7 @@ services:
 
   postgres:
     image: postgres:13
-    container_name: dagster_postgres
+    container_name: dagster_data_provenance_postgres
     environment:
       POSTGRES_USER: dagster
       POSTGRES_PASSWORD: dagster
