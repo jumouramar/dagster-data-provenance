@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   dagster:
     build: .
@@ -10,6 +8,12 @@ services:
       - .:/app
     environment:
       - DAGSTER_HOME=/app
+      - PROVENANCE_HOST=postgres
+      - PROVENANCE_PORT=5432
+      - PROVENANCE_DB=dagster
+      - PROVENANCE_USER=dagster
+      - PROVENANCE_PASSWORD=dagster
+      - ENVIRONMENT=development
     depends_on:
       - postgres
 
@@ -21,6 +25,12 @@ services:
       - .:/app
     environment:
       - DAGSTER_HOME=/app
+      - PROVENANCE_HOST=postgres
+      - PROVENANCE_PORT=5432
+      - PROVENANCE_DB=dagster
+      - PROVENANCE_USER=dagster
+      - PROVENANCE_PASSWORD=dagster
+      - ENVIRONMENT=development
     depends_on:
       - postgres
 

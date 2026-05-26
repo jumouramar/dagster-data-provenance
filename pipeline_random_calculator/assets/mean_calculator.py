@@ -1,6 +1,18 @@
 import numpy as np
 from dagster import AssetExecutionContext, asset
 
+from pipeline_random_calculator.resources import ProvenanceResource
+
+
+@asset
+def provenance_asset(
+    context: AssetExecutionContext, provenance: ProvenanceResource
+) -> str:
+    run_id = context.run_id
+    provenance.record(run_id)
+    context.log.info(f"Proveniência registrada para o run_id: {run_id}")
+    return run_id
+
 
 @asset
 def random_numbers_asset(context: AssetExecutionContext) -> list:
