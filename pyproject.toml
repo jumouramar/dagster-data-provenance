@@ -7,4 +7,8 @@ dependencies = [
     "dagster-webserver",
     "dagster-postgres",
     "numpy",
+    "requests",
 ]
+
+[tool.setuptools.packages.find]
+include = ["pipeline_random_calculator*", "pipeline_weather_rj*", "utils*"]
