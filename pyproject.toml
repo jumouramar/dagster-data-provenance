@@ -8,6 +8,7 @@ dependencies = [
     "dagster-postgres",
     "numpy",
     "requests",
+    "pydantic",
 ]
 
 [tool.setuptools.packages.find]
