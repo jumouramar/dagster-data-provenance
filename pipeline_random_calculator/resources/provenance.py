@@ -1,6 +1,7 @@
 import importlib.metadata
 import subprocess
 import sys
+import os
 
 import psycopg2
 from dagster import ConfigurableResource
@@ -15,9 +16,28 @@ def _git_hash() -> str | None:
             text=True,
             timeout=5,
         )
-        return result.stdout.strip() if result.returncode == 0 else None
+        if result.returncode == 0:
+            return result.stdout.strip()
     except Exception:
-        return None
+        pass
+
+    try:
+        git_head = os.path.join(os.getcwd(), ".git", "HEAD")
+        if os.path.isfile(git_head):
+            with open(git_head, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+            if content.startswith("ref:"):
+                ref = content.split(":", 1)[1].strip()
+                ref_path = os.path.join(os.getcwd(), ".git", *ref.split("/"))
+                if os.path.isfile(ref_path):
+                    with open(ref_path, "r", encoding="utf-8") as rf:
+                        return rf.read().strip()
+            else:
+                return content
+    except Exception:
+        pass
+
+    return None
 
 
 def _installed_packages() -> dict[str, str]:
