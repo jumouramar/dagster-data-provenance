@@ -9,8 +9,8 @@ def provenance_asset(
     context: AssetExecutionContext, provenance: ProvenanceResource
 ) -> str:
     run_id = context.run_id
-    provenance.record(run_id)
-    context.log.info(f"Proveniência registrada para o run_id: {run_id}")
+    provenance.record_start(run_id)
+    context.log.info(f"Proveniência de execução iniciada para o run_id: {run_id}")
     return run_id
 
 

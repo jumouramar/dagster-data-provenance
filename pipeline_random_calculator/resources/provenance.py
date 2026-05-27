@@ -75,19 +75,39 @@ class ProvenanceResource(ConfigurableResource):
                     python_version  TEXT        NOT NULL,
                     dependencies    JSONB,
                     git_hash        TEXT,
+                    status          TEXT,
+                    started_at      TIMESTAMPTZ,
+                    finished_at     TIMESTAMPTZ,
+                    duration_ms     BIGINT,
+                    error_message   TEXT,
                     recorded_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 )
                 """)
+            cur.execute(
+                "ALTER TABLE pipeline_provenance ADD COLUMN IF NOT EXISTS status TEXT"
+            )
+            cur.execute(
+                "ALTER TABLE pipeline_provenance ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ"
+            )
+            cur.execute(
+                "ALTER TABLE pipeline_provenance ADD COLUMN IF NOT EXISTS finished_at TIMESTAMPTZ"
+            )
+            cur.execute(
+                "ALTER TABLE pipeline_provenance ADD COLUMN IF NOT EXISTS duration_ms BIGINT"
+            )
+            cur.execute(
+                "ALTER TABLE pipeline_provenance ADD COLUMN IF NOT EXISTS error_message TEXT"
+            )
             conn.commit()
 
-    def record(self, run_id: str) -> None:
+    def record_start(self, run_id: str) -> None:
         self.setup_schema()
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
                 """
                 INSERT INTO pipeline_provenance
-                    (run_id, environment_name, python_version, dependencies, git_hash)
-                VALUES (%s, %s, %s, %s, %s)
+                    (run_id, environment_name, python_version, dependencies, git_hash, status, started_at)
+                VALUES (%s, %s, %s, %s, %s, %s, NOW())
                 """,
                 (
                     run_id,
@@ -95,5 +115,38 @@ class ProvenanceResource(ConfigurableResource):
                     sys.version,
                     Json(_installed_packages()),
                     _git_hash(),
+                    "RUNNING",
                 ),
+            )
+
+    def record_success(self, run_id: str) -> None:
+        self.setup_schema()
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE pipeline_provenance
+                SET
+                    status = %s,
+                    finished_at = NOW(),
+                    duration_ms = (EXTRACT(EPOCH FROM (NOW() - COALESCE(started_at, recorded_at))) * 1000)::BIGINT,
+                    error_message = NULL
+                WHERE run_id = %s
+                """,
+                ("SUCCESS", run_id),
+            )
+
+    def record_failure(self, run_id: str, error_message: str | None = None) -> None:
+        self.setup_schema()
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE pipeline_provenance
+                SET
+                    status = %s,
+                    finished_at = NOW(),
+                    duration_ms = (EXTRACT(EPOCH FROM (NOW() - COALESCE(started_at, recorded_at))) * 1000)::BIGINT,
+                    error_message = %s
+                WHERE run_id = %s
+                """,
+                ("FAILED", error_message, run_id),
             )
