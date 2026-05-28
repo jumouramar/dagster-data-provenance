@@ -1,3 +1,4 @@
+import ast
 import importlib.metadata
 import subprocess
 import sys
@@ -41,11 +42,85 @@ def _git_hash() -> str | None:
     return None
 
 
-def _installed_packages() -> dict[str, str]:
+def _installed_packages(target_package: str | None = None) -> dict[str, str | None]:
+    # 1) If a package name is provided and installed, return its declared direct requires
+    if target_package:
+        try:
+            dist = importlib.metadata.distribution(target_package)
+            reqs = dist.requires or []
+            deps: dict[str, str | None] = {}
+            for r in reqs:
+                try:
+                    name = r.split(";", 1)[0].split("(", 1)[0].strip().split()[0]
+                except Exception:
+                    name = str(r).split()[0]
+                try:
+                    version = importlib.metadata.version(name)
+                except importlib.metadata.PackageNotFoundError:
+                    version = None
+                deps[name] = version
+            if deps:
+                return deps
+        except importlib.metadata.PackageNotFoundError:
+            pass
+        except Exception:
+            pass
+
+    # 2) Fallback for source-based jobs: inspect imports used by the local package tree.
+    source_root = os.path.join(os.getcwd(), "pipeline_random_calculator")
+    if os.path.isdir(source_root):
+        stdlib_modules = set(getattr(sys, "stdlib_module_names", ()))
+
+        imported_modules: set[str] = set()
+        for root, _dirs, files in os.walk(source_root):
+            for fn in files:
+                if not fn.endswith(".py"):
+                    continue
+                path = os.path.join(root, fn)
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        tree = ast.parse(f.read(), filename=path)
+                except Exception:
+                    continue
+
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.Import):
+                        for alias in node.names:
+                            root_name = alias.name.split(".", 1)[0]
+                            if root_name != "pipeline_random_calculator":
+                                imported_modules.add(root_name)
+                    elif isinstance(node, ast.ImportFrom):
+                        if node.level and node.module is None:
+                            continue
+                        if node.module:
+                            root_name = node.module.split(".", 1)[0]
+                            if root_name != "pipeline_random_calculator":
+                                imported_modules.add(root_name)
+
+        deps: dict[str, str | None] = {}
+        module_to_distributions = importlib.metadata.packages_distributions()
+        for module_name in sorted(imported_modules):
+            if not module_name or module_name in stdlib_modules:
+                continue
+            dist_names = module_to_distributions.get(module_name) or [module_name]
+            for dist_name in dist_names:
+                if dist_name == "pipeline_random_calculator":
+                    continue
+                try:
+                    deps[dist_name] = importlib.metadata.version(dist_name)
+                except importlib.metadata.PackageNotFoundError:
+                    deps.setdefault(dist_name, None)
+                except Exception:
+                    deps.setdefault(dist_name, None)
+
+        if deps:
+            return deps
+
+    # 3) Last resort: return all installed distributions (original behavior)
     return {
-        dist.metadata["Name"]: dist.metadata["Version"]
+        dist.metadata["Name"]: dist.metadata.get("Version")
         for dist in importlib.metadata.distributions()
-        if dist.metadata["Name"]
+        if dist.metadata.get("Name")
     }
 
 
@@ -56,6 +131,7 @@ class ProvenanceResource(ConfigurableResource):
     user: str
     password: str
     environment: str
+    package_name: str | None = None
 
     def _connect(self):
         return psycopg2.connect(
@@ -158,6 +234,35 @@ class ProvenanceResource(ConfigurableResource):
                     config_fingerprint = hashlib.sha1(str(run_config).encode("utf-8")).hexdigest()
                 except Exception:
                     config_fingerprint = None
+        # determine source of dependencies for logging
+        deps_source = None
+        if self.package_name:
+            try:
+                importlib.metadata.distribution(self.package_name)
+                deps_source = f"distribution:{self.package_name}"
+            except Exception:
+                deps_source = None
+
+        if deps_source is None:
+            if os.path.isdir(os.path.join(os.getcwd(), "pipeline_random_calculator")):
+                deps_source = "source-tree:pipeline_random_calculator"
+            else:
+                deps_source = "installed-environment"
+
+        deps = _installed_packages(self.package_name)
+
+        # log via Dagster context when available
+        if context is not None and hasattr(context, "log"):
+            try:
+                context.log.info(
+                    f"Collected dependencies source={deps_source}; count={len(deps)}"
+                )
+                # include a small sample so logs are manageable
+                sample_items = list(deps.items())[:10]
+                context.log.debug(f"Dependency sample: {sample_items}")
+            except Exception:
+                pass
+
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
                 """
@@ -169,7 +274,7 @@ class ProvenanceResource(ConfigurableResource):
                     run_id,
                     self.environment,
                     sys.version,
-                    Json(_installed_packages()),
+                    Json(deps),
                     _git_hash(),
                     job_name,
                     asset_graph_hash,
