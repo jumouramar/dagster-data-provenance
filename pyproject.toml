@@ -9,6 +9,7 @@ dependencies = [
     "numpy",
     "requests",
     "pydantic",
+    "psycopg2-binary",
 ]
 
 [tool.setuptools.packages.find]
