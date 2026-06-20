@@ -1,7 +1,6 @@
-import os
-
 from dagster import Definitions
 
+import settings
 from pipeline_random_calculator import (
     ProvenanceResource,
     mean_asset,
@@ -32,12 +31,12 @@ defs = Definitions(
     schedules=[weather_rj_daily_schedule],
     resources={
         "provenance": ProvenanceResource(
-            host=os.getenv("PROVENANCE_HOST"),
-            port=int(os.getenv("PROVENANCE_PORT")),
-            dbname=os.getenv("PROVENANCE_DB"),
-            user=os.getenv("PROVENANCE_USER"),
-            password=os.getenv("PROVENANCE_PASSWORD"),
-            environment=os.getenv("ENVIRONMENT"),
+            host=settings.PROVENANCE_HOST,
+            port=settings.PROVENANCE_PORT,
+            dbname=settings.PROVENANCE_DB,
+            user=settings.PROVENANCE_USER,
+            password=settings.PROVENANCE_PASSWORD,
+            environment=settings.ENVIRONMENT,
         ),
     },
 )
