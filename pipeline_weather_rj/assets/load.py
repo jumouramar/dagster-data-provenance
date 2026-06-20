@@ -7,11 +7,11 @@ import settings
 _DB = settings.POSTGRES_CONN
 
 
-@asset(group_name="weather_rj")
-def load_weather_rj(context, transform_weather_rj: dict) -> None:
+@asset(group_name="weather")
+def load_weather(context, transform_weather: dict) -> None:
     """Inserts raw and daily weather data into PostgreSQL."""
-    raw = transform_weather_rj["raw"]
-    daily = transform_weather_rj["daily"]
+    raw = transform_weather["raw"]
+    daily = transform_weather["daily"]
     run_id = context.run_id
 
     conn = psycopg2.connect(**_DB)
@@ -21,15 +21,16 @@ def load_weather_rj(context, transform_weather_rj: dict) -> None:
                 cur.execute(
                     """
                     INSERT INTO etl.weather_raw
-                        (city, latitude, longitude, api_url, raw_payload, dagster_run_id)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+                        (city, latitude, longitude, source, hourly_count, raw_payload, dagster_run_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
                     (
                         raw["city"],
                         raw["latitude"],
                         raw["longitude"],
-                        raw.get("api_url", ""),
+                        raw["source"],
+                        raw["hourly_count"],
                         json.dumps(raw["payload"]),
                         run_id,
                     ),
@@ -39,7 +40,7 @@ def load_weather_rj(context, transform_weather_rj: dict) -> None:
                 for row in daily:
                     cur.execute(
                         """
-                        INSERT INTO etl.weather_transformed
+                        INSERT INTO etl.weather_daily
                             (raw_id, city, date, temp_max_c, temp_min_c, temp_mean_c,
                              humidity_mean, wind_max_kmh, precipitation_mm, dagster_run_id)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)

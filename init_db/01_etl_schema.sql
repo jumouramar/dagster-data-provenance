@@ -1,17 +1,18 @@
 CREATE SCHEMA IF NOT EXISTS etl;
 
 CREATE TABLE IF NOT EXISTS etl.weather_raw (
-    id              SERIAL PRIMARY KEY,
-    city            TEXT NOT NULL,
-    latitude        FLOAT NOT NULL,
-    longitude       FLOAT NOT NULL,
-    fetched_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    api_url         TEXT NOT NULL,
-    raw_payload     JSONB NOT NULL,
-    dagster_run_id  TEXT
+    id             SERIAL PRIMARY KEY,
+    city           TEXT NOT NULL,
+    latitude       FLOAT NOT NULL,
+    longitude      FLOAT NOT NULL,
+    fetched_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    source         TEXT NOT NULL,
+    hourly_count   INT,
+    raw_payload    JSONB NOT NULL,
+    dagster_run_id TEXT
 );
 
-CREATE TABLE IF NOT EXISTS etl.weather_transformed (
+CREATE TABLE IF NOT EXISTS etl.weather_daily (
     id               SERIAL PRIMARY KEY,
     raw_id           INT REFERENCES etl.weather_raw(id),
     city             TEXT NOT NULL,

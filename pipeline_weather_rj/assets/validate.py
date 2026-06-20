@@ -4,11 +4,11 @@ from pydantic import ValidationError
 from pipeline_weather_rj.models.open_meteo import OpenMeteoForecastResponse
 
 
-@asset(group_name="weather_rj")
-def validate_weather_rj(context, extract_weather_rj: dict) -> dict:
+@asset(group_name="weather")
+def validate_weather(context, extract_weather: dict) -> dict:
     try:
-        OpenMeteoForecastResponse.model_validate(extract_weather_rj["payload"])
+        OpenMeteoForecastResponse.model_validate(extract_weather["payload"])
     except ValidationError as e:
-        raise ValueError(f"Rio de Janeiro: payload validation failed\n{e}") from e
-    context.log.info("Rio de Janeiro: validation passed")
-    return extract_weather_rj
+        raise ValueError(f"{extract_weather['city']}: payload validation failed\n{e}") from e
+    context.log.info(f"{extract_weather['city']}: validation passed")
+    return extract_weather

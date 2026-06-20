@@ -16,10 +16,10 @@ def _safe_min(values: list) -> float | None:
     return round(min(valid), 2) if valid else None
 
 
-@asset(group_name="weather_rj")
-def transform_weather_rj(context, validate_weather_rj: dict) -> dict:
-    """Aggregates hourly data into daily stats for Rio de Janeiro."""
-    hourly = validate_weather_rj["payload"]["hourly"]
+@asset(group_name="weather")
+def transform_weather(context, validate_weather: dict) -> dict:
+    """Aggregates hourly data into daily stats."""
+    hourly = validate_weather["payload"]["hourly"]
 
     by_date: dict[str, dict] = {}
     for i, ts in enumerate(hourly["time"]):
@@ -55,4 +55,4 @@ def transform_weather_rj(context, validate_weather_rj: dict) -> dict:
             f"humidity {row['humidity_mean']}%, wind max {row['wind_max_kmh']} km/h"
         )
 
-    return {"raw": validate_weather_rj, "daily": daily}
+    return {"raw": validate_weather, "daily": daily}
