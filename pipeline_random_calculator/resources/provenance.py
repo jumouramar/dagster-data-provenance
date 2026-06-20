@@ -45,7 +45,23 @@ class ProvenanceResource(ConfigurableResource):
             password=self.password,
         )
 
+    def setup_schema(self) -> None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS pipeline_provenance (
+                    id              SERIAL PRIMARY KEY,
+                    run_id          TEXT        NOT NULL,
+                    environment_name TEXT       NOT NULL,
+                    python_version  TEXT        NOT NULL,
+                    dependencies    JSONB,
+                    git_hash        TEXT,
+                    recorded_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """)
+            conn.commit()
+
     def record(self, run_id: str) -> None:
+        self.setup_schema()
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
                 """
