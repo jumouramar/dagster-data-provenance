@@ -2,7 +2,9 @@ import json
 import psycopg2
 from dagster import asset
 
-_DB = dict(host="postgres", port=5432, user="dagster", password="dagster", dbname="dagster")
+import settings
+
+_DB = settings.POSTGRES_CONN
 
 
 @asset(group_name="weather_rj")

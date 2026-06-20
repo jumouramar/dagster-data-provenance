@@ -10,6 +10,14 @@ POSTGRES_DB = os.getenv("POSTGRES_DB")
 POSTGRES_USER = os.getenv("POSTGRES_USER")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 
+POSTGRES_CONN = dict(
+    host=POSTGRES_HOST,
+    port=POSTGRES_PORT,
+    user=POSTGRES_USER,
+    password=POSTGRES_PASSWORD,
+    dbname=POSTGRES_DB,
+)
+
 # Provenance DB (independent credentials — may differ in other environments)
 PROVENANCE_HOST = os.getenv("PROVENANCE_HOST")
 PROVENANCE_PORT = int(os.getenv("PROVENANCE_PORT"))
