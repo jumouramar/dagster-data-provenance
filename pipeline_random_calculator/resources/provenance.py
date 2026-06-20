@@ -4,6 +4,7 @@ import subprocess
 import sys
 import os
 import hashlib
+from typing import Any
 
 import psycopg2
 from dagster import ConfigurableResource
@@ -187,6 +188,9 @@ class ProvenanceResource(ConfigurableResource):
             cur.execute(
                 "ALTER TABLE pipeline_provenance ADD COLUMN IF NOT EXISTS config_fingerprint TEXT"
             )
+            cur.execute(
+                "ALTER TABLE pipeline_provenance ADD COLUMN IF NOT EXISTS run_config JSONB"
+            )
             conn.commit()
 
     def _definition_hash(self) -> str | None:
@@ -234,6 +238,24 @@ class ProvenanceResource(ConfigurableResource):
                     config_fingerprint = hashlib.sha1(str(run_config).encode("utf-8")).hexdigest()
                 except Exception:
                     config_fingerprint = None
+                try:
+                    # filter out obvious secret keys and normalize structure for safe storage
+                    def _filter(obj: Any) -> Any:
+                        if isinstance(obj, dict):
+                            out: dict = {}
+                            for k in sorted(obj.keys()):
+                                kl = k.lower()
+                                if any(s in kl for s in ("pass", "secret", "token", "key", "cred")):
+                                    continue
+                                out[k] = _filter(obj[k])
+                            return out
+                        if isinstance(obj, list):
+                            return [_filter(x) for x in obj]
+                        return obj
+
+                    filtered_run_config = _filter(run_config)
+                except Exception:
+                    filtered_run_config = None
         # determine source of dependencies for logging
         deps_source = None
         if self.package_name:
@@ -267,8 +289,8 @@ class ProvenanceResource(ConfigurableResource):
             cur.execute(
                 """
                 INSERT INTO pipeline_provenance
-                    (run_id, environment_name, python_version, dependencies, git_hash, job_name, asset_graph_hash, config_fingerprint, status, started_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                    (run_id, environment_name, python_version, dependencies, git_hash, job_name, asset_graph_hash, config_fingerprint, run_config, status, started_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
                 """,
                 (
                     run_id,
@@ -279,6 +301,7 @@ class ProvenanceResource(ConfigurableResource):
                     job_name,
                     asset_graph_hash,
                     config_fingerprint,
+                    Json(filtered_run_config) if 'filtered_run_config' in locals() and filtered_run_config is not None else None,
                     "RUNNING",
                 ),
             )
