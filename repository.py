@@ -8,13 +8,13 @@ from pipeline_random_calculator import (
     provenance_asset,
     random_numbers_asset,
 )
-from pipeline_weather_rj import (
+from weather_daily import (
     extract_weather,
     validate_weather,
     transform_weather,
     load_weather,
-    weather_rj_job,
-    weather_rj_daily_schedule,
+    weather_daily,
+    weather_daily_schedule,
 )
 
 defs = Definitions(
@@ -27,8 +27,8 @@ defs = Definitions(
         transform_weather,
         load_weather,
     ],
-    jobs=[mean_calculator_job, weather_rj_job],
-    schedules=[weather_rj_daily_schedule],
+    jobs=[mean_calculator_job, weather_daily],
+    schedules=[weather_daily_schedule],
     resources={
         "provenance": ProvenanceResource(
             host=settings.PROVENANCE_HOST,
