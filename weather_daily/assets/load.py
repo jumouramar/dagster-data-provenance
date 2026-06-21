@@ -6,14 +6,11 @@ _db = PostgresClient(**settings.POSTGRES_CONN)
 
 
 @asset(group_name="weather")
-def load_weather(context, transform_weather: dict) -> None:
-    raw = transform_weather["raw"]
-    daily = transform_weather["daily"]
-
+def load_weather(context, transform_weather: list) -> None:
     _db.upsert_batch(
         "etl", "weather_daily",
-        [{**row, "city": raw["city"]} for row in daily],
+        transform_weather,
         conflict_columns=["city", "date"],
     )
-
-    context.log.info(f"Loaded {len(daily)} daily rows for {raw['city']}")
+    city = transform_weather[0]["city"] if transform_weather else "?"
+    context.log.info(f"Loaded {len(transform_weather)} daily rows for {city}")
