@@ -260,3 +260,54 @@ class ProvenanceResource(ConfigurableResource):
                 """,
                 (run_id, self.environment, sys.version, "FAILED", start_time, end_time, error_message),
             )
+
+    def setup_asset_schema(self) -> None:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS asset_provenance (
+                    id              SERIAL PRIMARY KEY,
+                    run_id          TEXT        NOT NULL,
+                    asset_key       TEXT        NOT NULL,
+                    asset_code      TEXT,
+                    return_value    JSONB,
+                    return_type     TEXT,
+                    upstream_assets JSONB,
+                    finished_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    recorded_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    UNIQUE (run_id, asset_key)
+                )
+            """)
+            conn.commit()
+
+    def record_asset_output(
+        self,
+        run_id: str,
+        asset_key: str,
+        asset_code: str | None,
+        return_value: Any,
+        return_type: str,
+        upstream_assets: list[str],
+    ) -> None:
+        self.setup_asset_schema()
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO asset_provenance
+                    (run_id, asset_key, asset_code, return_value, return_type, upstream_assets)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (run_id, asset_key) DO UPDATE SET
+                    asset_code      = EXCLUDED.asset_code,
+                    return_value    = EXCLUDED.return_value,
+                    return_type     = EXCLUDED.return_type,
+                    upstream_assets = EXCLUDED.upstream_assets,
+                    finished_at     = NOW()
+                """,
+                (
+                    run_id,
+                    asset_key,
+                    asset_code,
+                    Json(return_value),
+                    return_type,
+                    Json(upstream_assets),
+                ),
+            )

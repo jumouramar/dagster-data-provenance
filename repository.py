@@ -1,3 +1,5 @@
+import os
+
 from dagster import Definitions, load_assets_from_modules
 
 from pipeline_random_calculator.assets import mean_calculator as random_assets
@@ -15,6 +17,7 @@ from core_provenance.sensors.provenance_sensor import (
     provenance_failure_sensor,
     get_provenance_resource,
 )
+from core_provenance.resources.provenance_io_manager import ProvenanceIOManager
 
 defs = Definitions(
     assets=[
@@ -33,5 +36,13 @@ defs = Definitions(
     ],
     resources={
         "provenance": get_provenance_resource(),
+        "io_manager": ProvenanceIOManager(
+            host=os.getenv("PROVENANCE_HOST", "postgres"),
+            port=int(os.getenv("PROVENANCE_PORT", "5432")),
+            dbname=os.getenv("PROVENANCE_DB", "dagster"),
+            user=os.getenv("PROVENANCE_USER", "dagster"),
+            password=os.getenv("PROVENANCE_PASSWORD", "dagster"),
+            environment=os.getenv("ENVIRONMENT", "development"),
+        ),
     },
 )
