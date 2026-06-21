@@ -1,45 +1,51 @@
 services:
   dagster:
     build: .
-    container_name: dagster_app
+    container_name: dagster_data_provenance_app
     ports:
       - "3000:3000"
     volumes:
       - .:/app
-    environment:
-      - DAGSTER_HOME=/app
-      - PROVENANCE_HOST=postgres
-      - PROVENANCE_PORT=5432
-      - PROVENANCE_DB=dagster
-      - PROVENANCE_USER=dagster
-      - PROVENANCE_PASSWORD=dagster
-      - ENVIRONMENT=development
+    env_file: .env
     depends_on:
       - postgres
+    restart: on-failure
 
   daemon:
     build: .
-    container_name: dagster_daemon
+    container_name: dagster_data_provenance_daemon
     command: dagster-daemon run
     volumes:
       - .:/app
-    environment:
-      - DAGSTER_HOME=/app
-      - PROVENANCE_HOST=postgres
-      - PROVENANCE_PORT=5432
-      - PROVENANCE_DB=dagster
-      - PROVENANCE_USER=dagster
-      - PROVENANCE_PASSWORD=dagster
-      - ENVIRONMENT=development
+    env_file: .env
     depends_on:
       - postgres
+    restart: on-failure
 
   postgres:
     image: postgres:13
-    container_name: dagster_postgres
-    environment:
-      POSTGRES_USER: dagster
-      POSTGRES_PASSWORD: dagster
-      POSTGRES_DB: dagster
+    container_name: dagster_data_provenance_postgres
+    env_file: .env
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init_db:/docker-entrypoint-initdb.d
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: dagster_data_provenance_pgadmin
+    env_file: .env
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+volumes:
+  postgres_data:
+  pgadmin_data:

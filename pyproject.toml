@@ -7,8 +7,11 @@ dependencies = [
     "dagster-webserver",
     "dagster-postgres",
     "numpy",
+    "requests",
+    "pydantic",
     "psycopg2-binary",
+    "sqlalchemy",
 ]
 
 [tool.setuptools.packages.find]
-include = ["pipeline_random_calculator*"]
+include = ["pipeline_random_calculator*", "pipeline_weather_rj*", "utils*"]
