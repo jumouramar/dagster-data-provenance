@@ -11,7 +11,10 @@ dependencies = [
     "pydantic",
     "psycopg2-binary",
     "sqlalchemy",
+    "streamlit>=1.35.0",
+    "pyvis>=0.3.2",
+    "pygments>=2.18.0",
 ]
 
 [tool.setuptools.packages.find]
-include = ["pipeline_random_calculator*", "pipeline_weather_rj*", "utils*"]
+include = ["pipeline_random_calculator*", "pipeline_weather_rj*", "utils*", "visualization*"]

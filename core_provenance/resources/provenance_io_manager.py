@@ -62,7 +62,9 @@ class ProvenanceIOManager(ConfigurableIOManager):
         )
 
     def handle_output(self, context: OutputContext, obj: Any) -> None:
-        asset_key = str(context.asset_key) if context.asset_key is not None else context.name
+        asset_key = (
+            "/".join(context.asset_key.path) if context.asset_key is not None else context.name
+        )
         _RUN_STORE[_store_key(context.run_id, asset_key)] = obj
 
         asset_code = _get_source(context)
@@ -80,10 +82,14 @@ class ProvenanceIOManager(ConfigurableIOManager):
                 upstream_assets=upstream_assets,
             )
         except Exception as e:
-            context.log.warning(f"[provenance] Falha ao gravar asset_provenance para {asset_key}: {e}")
+            context.log.warning(
+                f"[provenance] Falha ao gravar asset_provenance para {asset_key}: {e}"
+            )
 
     def load_input(self, context: InputContext) -> Any:
-        asset_key = str(context.asset_key) if context.asset_key is not None else context.name
+        asset_key = (
+            "/".join(context.asset_key.path) if context.asset_key is not None else context.name
+        )
         upstream = context.upstream_output
         if upstream is None:
             return None
@@ -100,5 +106,7 @@ class ProvenanceIOManager(ConfigurableIOManager):
                 row = cur.fetchone()
             return row[0] if row else None
         except Exception as e:
-            context.log.warning(f"[provenance] Falha ao carregar valor para {asset_key}: {e}")
+            context.log.warning(
+                f"[provenance] Falha ao carregar valor para {asset_key}: {e}"
+            )
             return None
