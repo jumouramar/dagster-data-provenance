@@ -37,23 +37,40 @@ def get_run_ids() -> list[str]:
     return [r[0] for r in rows]
 
 
+def get_job_names() -> list[str]:
+    with _engine().connect() as conn:
+        rows = conn.execute(
+            text("""
+                SELECT DISTINCT pipeline_name
+                FROM runs
+                WHERE pipeline_name IS NOT NULL
+                ORDER BY pipeline_name
+            """)
+        ).fetchall()
+    return [r[0] for r in rows]
+
+
 def get_assets_for_run(run_id: str) -> list[dict]:
     if run_id == "__all__":
         query = text("""
-            SELECT DISTINCT ON (asset_key)
-                run_id, asset_key, asset_code, return_value,
-                return_type, upstream_assets, finished_at
-            FROM asset_provenance
-            ORDER BY asset_key, finished_at DESC
+            SELECT DISTINCT ON (ap.asset_key)
+                ap.run_id, ap.asset_key, ap.asset_code, ap.return_value,
+                ap.return_type, ap.upstream_assets, ap.finished_at,
+                r.pipeline_name AS job_name
+            FROM asset_provenance ap
+            LEFT JOIN runs r ON ap.run_id = r.run_id
+            ORDER BY ap.asset_key, ap.finished_at DESC
         """)
         params = {}
     else:
         query = text("""
-            SELECT run_id, asset_key, asset_code, return_value,
-                   return_type, upstream_assets, finished_at
-            FROM asset_provenance
-            WHERE run_id = :run_id
-            ORDER BY finished_at
+            SELECT ap.run_id, ap.asset_key, ap.asset_code, ap.return_value,
+                   ap.return_type, ap.upstream_assets, ap.finished_at,
+                   r.pipeline_name AS job_name
+            FROM asset_provenance ap
+            LEFT JOIN runs r ON ap.run_id = r.run_id
+            WHERE ap.run_id = :run_id
+            ORDER BY ap.finished_at
         """)
         params = {"run_id": run_id}
 
@@ -69,6 +86,7 @@ def get_assets_for_run(run_id: str) -> list[dict]:
             "return_type":     r[4],
             "upstream_assets": r[5] if isinstance(r[5], list) else json.loads(r[5] or "[]"),
             "finished_at":     str(r[6]),
+            "job_name":        r[7],
         }
         for r in rows
     ]

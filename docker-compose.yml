@@ -41,6 +41,8 @@ services:
     volumes:
       - .:/app
     env_file: .env
+    environment:
+      PYTHONPATH: /app
     depends_on:
       - postgres
     restart: on-failure

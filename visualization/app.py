@@ -6,7 +6,7 @@ from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import PythonLexer
 
-from visualization.db import get_assets_for_run, get_run_ids
+from visualization.db import get_assets_for_run, get_job_names, get_run_ids
 from visualization.graph import build_graph
 
 st.set_page_config(
@@ -39,6 +39,7 @@ with st.sidebar:
 
     try:
         run_ids = get_run_ids()
+        job_names = get_job_names()
     except Exception as e:
         st.error(f"Não foi possível conectar ao banco: {e}")
         st.stop()
@@ -54,7 +55,7 @@ with st.sidebar:
     st.divider()
     pipeline_filter = st.radio(
         "pipeline",
-        ["todos", "weather_rj", "random_calculator"],
+        ["todos"] + job_names,
         index=0,
         horizontal=True,
     )
@@ -67,10 +68,8 @@ with st.sidebar:
 with st.spinner("carregando proveniência…"):
     assets = get_assets_for_run(run_id)
 
-if pipeline_filter == "weather_rj":
-    assets = [a for a in assets if "weather" in a["asset_key"]]
-elif pipeline_filter == "random_calculator":
-    assets = [a for a in assets if any(k in a["asset_key"] for k in ("mean", "random", "numbers"))]
+if pipeline_filter != "todos":
+    assets = [a for a in assets if a.get("job_name") == pipeline_filter]
 
 if not assets:
     st.info("Nenhum asset encontrado para esta seleção.")
