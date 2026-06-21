@@ -38,27 +38,34 @@ with st.sidebar:
     st.divider()
 
     try:
-        run_ids = get_run_ids()
         job_names = get_job_names()
     except Exception as e:
         st.error(f"Não foi possível conectar ao banco: {e}")
         st.stop()
 
-    if not run_ids:
-        st.warning("Nenhuma execução registrada ainda.")
-        st.stop()
-
-    run_options = ["(todos — mais recente por asset)"] + run_ids
-    selected_label = st.selectbox("run_id", run_options, index=0)
-    run_id = "__all__" if selected_label.startswith("(todos") else selected_label
-
-    st.divider()
     pipeline_filter = st.radio(
         "pipeline",
         ["todos"] + job_names,
         index=0,
         horizontal=True,
     )
+
+    st.divider()
+
+    selected_job = None if pipeline_filter == "todos" else pipeline_filter
+    try:
+        run_ids = get_run_ids(job_name=selected_job)
+    except Exception as e:
+        st.error(f"Erro ao buscar runs: {e}")
+        st.stop()
+
+    if not run_ids:
+        st.warning("Nenhuma execução registrada para este pipeline.")
+        st.stop()
+
+    run_options = ["(todos — mais recente por asset)"] + run_ids
+    selected_label = st.selectbox("run_id", run_options, index=0)
+    run_id = "__all__" if selected_label.startswith("(todos") else selected_label
 
     st.divider()
     short_id = run_id[:20] + "…" if len(run_id) > 20 else run_id

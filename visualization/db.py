@@ -29,11 +29,28 @@ def _engine() -> Engine:
     )
 
 
-def get_run_ids() -> list[str]:
+def get_run_ids(job_name: str | None = None) -> list[str]:
+    if job_name:
+        query = text("""
+            SELECT DISTINCT ap.run_id
+            FROM asset_provenance ap
+            JOIN runs r ON ap.run_id = r.run_id
+            WHERE r.pipeline_name = :job_name
+            ORDER BY ap.run_id DESC
+            LIMIT 100
+        """)
+        params = {"job_name": job_name}
+    else:
+        query = text("""
+            SELECT DISTINCT ap.run_id
+            FROM asset_provenance ap
+            JOIN runs r ON ap.run_id = r.run_id
+            ORDER BY ap.run_id DESC
+            LIMIT 100
+        """)
+        params = {}
     with _engine().connect() as conn:
-        rows = conn.execute(
-            text("SELECT DISTINCT run_id FROM asset_provenance ORDER BY run_id DESC LIMIT 100")
-        ).fetchall()
+        rows = conn.execute(query, params).fetchall()
     return [r[0] for r in rows]
 
 
