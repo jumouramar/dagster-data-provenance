@@ -144,7 +144,10 @@ with col_detail:
 
     with tab_output:
         st.caption(f"`return_type`: `{asset['return_type']}`")
-        if asset["return_value"] is None:
+        rv = asset["return_value"]
+        if rv is None:
             st.caption("NoneType — nenhum valor a exibir")
+        elif isinstance(rv, (dict, list)):
+            st.json(rv)
         else:
-            st.json(asset["return_value"])
+            st.json({"value": rv})
