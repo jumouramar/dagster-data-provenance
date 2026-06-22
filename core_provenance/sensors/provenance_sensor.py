@@ -44,6 +44,12 @@ def provenance_start_sensor(context: RunStatusSensorContext):
             start_time=start_time,
         )
 
+        record_config_asset(
+            prov=prov,
+            run_id=run.run_id,
+            run_config=run.run_config,
+        )
+
         context.log.info(
             f"Proveniência de execução iniciada para o run_id: {run.run_id}"
         )
@@ -109,3 +115,31 @@ def provenance_failure_sensor(context: RunStatusSensorContext):
     except Exception as e:
         logger.error(f"[ERROR-PROV] Falha ao gravar proveniência (FAILURE): {e}")
         logger.error(traceback.format_exc())
+
+def record_config_asset(prov: ProvenanceResource, run_id: str, run_config: dict):
+    if not run_config:
+        return
+
+    def _filter(obj):
+        if isinstance(obj, dict):
+            out = {}
+            for k in sorted(obj.keys()):
+                kl = k.lower()
+                if any(s in kl for s in ("pass", "secret", "token", "key", "cred")):
+                    continue
+                out[k] = _filter(obj[k])
+            return out
+
+        if isinstance(obj, list):
+            return [_filter(x) for x in obj]
+
+        return obj
+
+    prov.record_asset_output(
+        run_id=run_id,
+        asset_key="config",
+        asset_code=None,
+        return_value=_filter(run_config),
+        return_type="RunConfig",
+        upstream_assets=[],
+    )
