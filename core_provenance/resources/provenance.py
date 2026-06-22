@@ -311,3 +311,28 @@ class ProvenanceResource(ConfigurableResource):
                     Json(upstream_assets),
                 ),
             )
+
+    def record_asset_materialization_fallback(
+        self,
+        run_id: str,
+        asset_key: str,
+        asset_code: str | None,
+        return_type: str,
+        upstream_assets: list[str],
+        finished_at: float | None = None,
+    ) -> None:
+        """Fallback para assets com -> None que o IOManager não captura.
+        ON CONFLICT DO NOTHING garante que dados do IOManager nunca são sobrescritos.
+        """
+        self.setup_asset_schema()
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO asset_provenance
+                    (run_id, asset_key, asset_code, return_value, return_type,
+                     upstream_assets, finished_at)
+                VALUES (%s, %s, %s, NULL, %s, %s, COALESCE(to_timestamp(%s), NOW()))
+                ON CONFLICT (run_id, asset_key) DO NOTHING
+                """,
+                (run_id, asset_key, asset_code, return_type, Json(upstream_assets), finished_at),
+            )

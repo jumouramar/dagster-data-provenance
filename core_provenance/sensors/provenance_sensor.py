@@ -1,16 +1,29 @@
+import inspect
 import os
 import logging
 import traceback
 from dagster import (
-    run_status_sensor,
+    DagsterEventType,
+    DefaultSensorStatus,
     DagsterRunStatus,
     RunStatusSensorContext,
-    DefaultSensorStatus,
+    run_status_sensor,
 )
 from core_provenance.resources.provenance import ProvenanceResource
 
 logger = logging.getLogger("dagster.daemon.provenance")
 logger.setLevel(logging.INFO)
+
+
+def _get_source_from_assets_def(assets_def) -> str | None:
+    try:
+        return inspect.getsource(assets_def.op.compute_fn.decorated_fn)
+    except Exception:
+        pass
+    try:
+        return inspect.getsource(assets_def.op.compute_fn)
+    except Exception:
+        return None
 
 
 def get_provenance_resource() -> ProvenanceResource:
@@ -72,6 +85,54 @@ def provenance_success_sensor(context: RunStatusSensorContext):
         end_time = stats.end_time if stats else None
 
         prov.record_success(run_id=run.run_id, start_time=start_time, end_time=end_time)
+
+        # Fallback: ASSET_MATERIALIZATION é emitido para TODOS os assets,
+        # inclusive os com -> None onde o IOManager não é chamado (sem HANDLED_OUTPUT).
+        # ON CONFLICT DO NOTHING preserva dados do IOManager (com return_value).
+        key_to_def: dict[str, tuple] = {}
+        try:
+            for asset_key, assets_def in context.repository_def.assets_defs_by_key.items():
+                key_to_def[asset_key.to_user_string()] = (assets_def, asset_key)
+        except Exception as exc:
+            logger.warning(f"[PROV] Não foi possível construir mapa de assets: {exc}")
+
+        mat_logs = context.instance.all_logs(
+            run.run_id, of_type=DagsterEventType.ASSET_MATERIALIZATION
+        )
+        logger.info(f"[PROV] {len(mat_logs)} eventos ASSET_MATERIALIZATION para run {run.run_id}")
+
+        for log in mat_logs:
+            ev = log.dagster_event
+            if not ev or not ev.asset_key:
+                continue
+
+            key_str = ev.asset_key.to_user_string()
+            upstream_assets: list[str] = []
+            asset_code = None
+
+            entry = key_to_def.get(key_str)
+            if entry:
+                assets_def, asset_key_obj = entry
+                try:
+                    upstream_assets = [
+                        d.to_user_string()
+                        for d in (assets_def.asset_deps.get(asset_key_obj) or set())
+                    ]
+                except Exception:
+                    pass
+                asset_code = _get_source_from_assets_def(assets_def)
+
+            try:
+                prov.record_asset_materialization_fallback(
+                    run_id=run.run_id,
+                    asset_key=key_str,
+                    asset_code=asset_code,
+                    return_type="NoneType",
+                    upstream_assets=upstream_assets,
+                    finished_at=log.timestamp,
+                )
+            except Exception as e:
+                logger.warning(f"[PROV] Fallback para {key_str} falhou: {e}")
 
         context.log.info(
             f"Proveniência de execução concluída com sucesso para o run_id: {run.run_id}"
