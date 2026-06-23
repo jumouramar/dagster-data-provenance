@@ -6,7 +6,8 @@ services:
       - "3000:3000"
     volumes:
       - .:/app
-    env_file: .env
+    environment:
+      DAGSTER_HOME: /app
     depends_on:
       - postgres
     restart: on-failure
@@ -17,7 +18,8 @@ services:
     command: dagster-daemon run
     volumes:
       - .:/app
-    env_file: .env
+    environment:
+      DAGSTER_HOME: /app
     depends_on:
       - postgres
     restart: on-failure
@@ -25,7 +27,10 @@ services:
   postgres:
     image: postgres:13
     container_name: dagster_data_provenance_postgres
-    env_file: .env
+    environment:
+      POSTGRES_USER: dagster
+      POSTGRES_PASSWORD: dagster
+      POSTGRES_DB: dagster
     ports:
       - "5432:5432"
     volumes:
@@ -40,7 +45,6 @@ services:
       - "8501:8501"
     volumes:
       - .:/app
-    env_file: .env
     environment:
       PYTHONPATH: /app
     depends_on:
@@ -50,10 +54,9 @@ services:
   pgadmin:
     image: dpage/pgadmin4
     container_name: dagster_data_provenance_pgadmin
-    env_file: .env
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
     ports:
       - "8080:80"
     depends_on:

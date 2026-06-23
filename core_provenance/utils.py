@@ -6,6 +6,8 @@ import os
 import subprocess
 import sys
 
+import settings
+
 IGNORE_DIRS = {".git", "__pycache__", ".venv", "venv", "env", ".dagster", "storage", "logs"}
 
 
@@ -150,12 +152,12 @@ def make_provenance_resource():
     from core_provenance.resources.provenance import ProvenanceResource
 
     return ProvenanceResource(
-        host=os.getenv("PROVENANCE_HOST", "postgres"),
-        port=int(os.getenv("PROVENANCE_PORT", "5432")),
-        dbname=os.getenv("PROVENANCE_DB", "dagster"),
-        user=os.getenv("PROVENANCE_USER", "dagster"),
-        password=os.getenv("PROVENANCE_PASSWORD", "dagster"),
-        environment=os.getenv("ENVIRONMENT", "development"),
+        host=settings.POSTGRES_HOST,
+        port=settings.POSTGRES_PORT,
+        dbname=settings.POSTGRES_DB,
+        user=settings.POSTGRES_USER,
+        password=settings.POSTGRES_PASSWORD,
+        environment=settings.ENVIRONMENT,
     )
 
 
@@ -163,10 +165,10 @@ def make_provenance_io_manager():
     from core_provenance.resources.provenance_io_manager import ProvenanceIOManager
 
     return ProvenanceIOManager(
-        host=os.getenv("PROVENANCE_HOST", "postgres"),
-        port=int(os.getenv("PROVENANCE_PORT", "5432")),
-        dbname=os.getenv("PROVENANCE_DB", "dagster"),
-        user=os.getenv("PROVENANCE_USER", "dagster"),
-        password=os.getenv("PROVENANCE_PASSWORD", "dagster"),
-        environment=os.getenv("ENVIRONMENT", "development"),
+        host=settings.POSTGRES_HOST,
+        port=settings.POSTGRES_PORT,
+        dbname=settings.POSTGRES_DB,
+        user=settings.POSTGRES_USER,
+        password=settings.POSTGRES_PASSWORD,
+        environment=settings.ENVIRONMENT,
     )

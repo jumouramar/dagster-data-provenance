@@ -1,14 +1,11 @@
-import os
+DAGSTER_HOME = "/app"
+ENVIRONMENT = "development"
 
-DAGSTER_HOME = os.getenv("DAGSTER_HOME")
-ENVIRONMENT = os.getenv("ENVIRONMENT")
-
-# Postgres (container + Dagster metadata storage)
-POSTGRES_HOST = os.getenv("POSTGRES_HOST")
-POSTGRES_PORT = int(os.getenv("POSTGRES_PORT"))
-POSTGRES_DB = os.getenv("POSTGRES_DB")
-POSTGRES_USER = os.getenv("POSTGRES_USER")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
+POSTGRES_HOST = "postgres"
+POSTGRES_PORT = 5432
+POSTGRES_DB = "dagster"
+POSTGRES_USER = "dagster"
+POSTGRES_PASSWORD = "dagster"
 
 POSTGRES_CONN = dict(
     host=POSTGRES_HOST,
@@ -17,10 +14,3 @@ POSTGRES_CONN = dict(
     password=POSTGRES_PASSWORD,
     dbname=POSTGRES_DB,
 )
-
-# Provenance DB (independent credentials — may differ in other environments)
-PROVENANCE_HOST = os.getenv("PROVENANCE_HOST")
-PROVENANCE_PORT = int(os.getenv("PROVENANCE_PORT"))
-PROVENANCE_DB = os.getenv("PROVENANCE_DB")
-PROVENANCE_USER = os.getenv("PROVENANCE_USER")
-PROVENANCE_PASSWORD = os.getenv("PROVENANCE_PASSWORD")

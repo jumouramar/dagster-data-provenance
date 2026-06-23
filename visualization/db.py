@@ -1,28 +1,20 @@
 import json
-import os
 import re
 
+import settings
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
 
 def _normalize_key(key: str) -> str:
-    """Normalize asset keys stored in legacy formats to plain path strings.
-
-    Handles: "AssetKey(['a', 'b'])" and "['a', 'b']" → "a/b"
-    """
     parts = re.findall(r"'([^']+)'", key)
     return "/".join(parts) if parts else key
 
 
 def _engine() -> Engine:
-    user = os.getenv("PROVENANCE_USER", "dagster")
-    password = os.getenv("PROVENANCE_PASSWORD", "dagster")
-    host = os.getenv("PROVENANCE_HOST", "postgres")
-    port = os.getenv("PROVENANCE_PORT", "5432")
-    dbname = os.getenv("PROVENANCE_DB", "dagster")
     return create_engine(
-        f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbname}",
+        f"postgresql+psycopg2://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}"
+        f"@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}",
         pool_size=3,
         max_overflow=5,
         pool_recycle=1800,
