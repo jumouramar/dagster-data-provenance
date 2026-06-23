@@ -2,9 +2,6 @@ import os
 import tempfile
 
 import streamlit as st
-from pygments import highlight
-from pygments.formatters import HtmlFormatter
-from pygments.lexers import PythonLexer
 
 from visualization.db import get_assets_for_run, get_job_names, get_run_ids
 from visualization.graph import build_graph
@@ -118,13 +115,7 @@ with col_detail:
 
     with tab_code:
         if asset["asset_code"]:
-            formatter = HtmlFormatter(
-                style="dracula",
-                noclasses=True,
-                prestyles="font-size:12px; line-height:1.6; font-family:monospace; border-radius:6px; padding:12px;",
-            )
-            highlighted = highlight(asset["asset_code"], PythonLexer(), formatter)
-            st.markdown(highlighted, unsafe_allow_html=True)
+            st.code(asset["asset_code"], language="python")
         else:
             st.caption("código-fonte não capturado")
 
