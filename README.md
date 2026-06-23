@@ -12,7 +12,6 @@ Proposta de modelo para captura e rastreamento de proveniência de dados em pipe
    
 2. Acesse http://localhost:3000/
 
-
 ## Proveniência de Implantação
 
 A cada execução do pipeline, uma linha é gravada na tabela `pipeline_provenance`:
@@ -31,3 +30,6 @@ A cada execução do pipeline, uma linha é gravada na tabela `pipeline_provenan
 
 (Opcional) Adicione a extensão `PostgresSQL`
 
+## Disclaimer sobre o Uso de Inteligência Artificial 
+
+Este trabalho contou com o apoio de ferramentas de Inteligência Artificial durante seu processo de elaboração. A IA foi utilizada como recurso auxiliar para pesquisa. Todas as sugestões, conteúdos e contribuições geradas por essas ferramentas foram analisadas criticamente, revisadas e validadas pelos autores antes de sua inclusão neste projeto.
