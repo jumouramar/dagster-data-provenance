@@ -30,7 +30,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init_db:/docker-entrypoint-initdb.d
+      - ./pipelines/weather_daily/init_db:/docker-entrypoint-initdb.d
 
   streamlit:
     build: .
