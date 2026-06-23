@@ -73,11 +73,18 @@ def installed_packages() -> dict[str, str | None]:
     for module_name in sorted(imported_modules):
         if not module_name or module_name in stdlib_modules:
             continue
-        for dist_name in (module_to_distributions.get(module_name) or [module_name]):
+        distributions = module_to_distributions.get(module_name)
+        if distributions:
+            for dist_name in distributions:
+                try:
+                    deps[dist_name] = importlib.metadata.version(dist_name)
+                except Exception:
+                    deps.setdefault(dist_name, None)
+        else:
             try:
-                deps[dist_name] = importlib.metadata.version(dist_name)
+                deps[module_name] = importlib.metadata.version(module_name)
             except Exception:
-                deps.setdefault(dist_name, None)
+                pass
 
     if deps:
         return deps
