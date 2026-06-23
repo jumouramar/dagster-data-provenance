@@ -65,8 +65,6 @@ with st.sidebar:
     run_id = "__all__" if selected_label.startswith("(todos") else selected_label
 
     st.divider()
-    short_id = run_id[:20] + "…" if len(run_id) > 20 else run_id
-    st.caption(f"`{short_id}`")
 
 # ── Load & filter ─────────────────────────────────────────────────────────────
 with st.spinner("carregando proveniência…"):
