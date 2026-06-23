@@ -1,9 +1,11 @@
 import json
 import re
 
+import psycopg2.errors
 import settings
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import ProgrammingError
 
 
 def _normalize_key(key: str) -> str:
@@ -41,8 +43,13 @@ def get_run_ids(job_name: str | None = None) -> list[str]:
             LIMIT 100
         """)
         params = {}
-    with _engine().connect() as conn:
-        rows = conn.execute(query, params).fetchall()
+    try:
+        with _engine().connect() as conn:
+            rows = conn.execute(query, params).fetchall()
+    except ProgrammingError as e:
+        if isinstance(e.orig, psycopg2.errors.UndefinedTable):
+            return []
+        raise
     return [r[0] for r in rows]
 
 
@@ -83,8 +90,13 @@ def get_assets_for_run(run_id: str) -> list[dict]:
         """)
         params = {"run_id": run_id}
 
-    with _engine().connect() as conn:
-        rows = conn.execute(query, params).fetchall()
+    try:
+        with _engine().connect() as conn:
+            rows = conn.execute(query, params).fetchall()
+    except ProgrammingError as e:
+        if isinstance(e.orig, psycopg2.errors.UndefinedTable):
+            return []
+        raise
 
     return [
         {
