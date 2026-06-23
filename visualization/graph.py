@@ -58,10 +58,10 @@ def build_graph(assets: list[dict], height: str = "500px") -> Network:
     for asset in assets:
         key = asset["asset_key"]
         tooltip = (
-            f"<b style='font-family:monospace'>{key}</b><br>"
-            f"<span style='color:#8b949e'>type:</span> {asset['return_type']}<br>"
-            f"<span style='color:#8b949e'>run:</span> {asset['run_id'][:12]}…<br>"
-            f"<span style='color:#8b949e'>at:</span> {asset['finished_at']}"
+            f"{key}\n"
+            f"type: {asset['return_type']}\n"
+            f"run: {asset['run_id'][:12]}…\n"
+            f"at: {asset['finished_at']}"
         )
         net.add_node(
             key,
