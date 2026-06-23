@@ -1,18 +1,10 @@
-import inspect
 import json
 from typing import Any
 
 from dagster import ConfigurableIOManager, InputContext, OutputContext
 
 from core_provenance.resources.provenance import ProvenanceResource
-
-# Module-level store keyed by "{run_id}::{asset_key}" so it survives any
-# Pydantic model re-instantiation that Dagster may do between steps.
-_RUN_STORE: dict[str, Any] = {}
-
-
-def _store_key(run_id: str, asset_key: str) -> str:
-    return f"{run_id}::{asset_key}"
+from core_provenance.utils import get_asset_source, get_asset_upstreams
 
 
 def _serialize(obj: Any) -> Any:
@@ -20,27 +12,6 @@ def _serialize(obj: Any) -> Any:
         return json.loads(json.dumps(obj, default=str))
     except Exception:
         return str(obj)
-
-
-def _get_source(context: OutputContext) -> str | None:
-    try:
-        fn = context.op_def.compute_fn.decorated_fn
-        return inspect.getsource(fn)
-    except Exception:
-        pass
-    try:
-        return inspect.getsource(context.op_def.compute_fn)
-    except Exception:
-        return None
-
-
-def _get_upstreams(context: OutputContext) -> list[str]:
-    try:
-        fn = context.op_def.compute_fn.decorated_fn
-        sig = inspect.signature(fn)
-        return [p for p in sig.parameters if p != "context"]
-    except Exception:
-        return []
 
 
 class ProvenanceIOManager(ConfigurableIOManager):
@@ -65,10 +36,8 @@ class ProvenanceIOManager(ConfigurableIOManager):
         asset_key = (
             "/".join(context.asset_key.path) if context.asset_key is not None else context.name
         )
-        _RUN_STORE[_store_key(context.run_id, asset_key)] = obj
-
-        asset_code = _get_source(context)
-        upstream_assets = _get_upstreams(context)
+        asset_code = get_asset_source(context.op_def)
+        upstream_assets = get_asset_upstreams(context.op_def)
         return_value = _serialize(obj)
         return_type = type(obj).__name__
 
@@ -93,8 +62,6 @@ class ProvenanceIOManager(ConfigurableIOManager):
         upstream = context.upstream_output
         if upstream is None:
             return None
-        # Each step may run in a separate subprocess, so _RUN_STORE is not reliable.
-        # Read the value from PostgreSQL where handle_output already persisted it.
         try:
             prov = self._provenance()
             prov.setup_asset_schema()

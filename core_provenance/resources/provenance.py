@@ -1,8 +1,4 @@
-import ast
-import importlib.metadata
-import subprocess
 import sys
-import os
 import hashlib
 from typing import Any
 
@@ -10,97 +6,7 @@ import psycopg2
 from dagster import ConfigurableResource
 from psycopg2.extras import Json
 
-
-def _git_hash() -> str | None:
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        if result.returncode == 0:
-            return result.stdout.strip()
-    except Exception:
-        pass
-    
-    # Fallback caso o git não esteja instalado no container
-    try:
-        git_head = os.path.join(os.getcwd(), ".git", "HEAD")
-        if os.path.isfile(git_head):
-            with open(git_head, "r", encoding="utf-8") as f:
-                content = f.read().strip()
-            if content.startswith("ref:"):
-                ref = content.split(":", 1)[1].strip()
-                ref_path = os.path.join(os.getcwd(), ".git", *ref.split("/"))
-                if os.path.isfile(ref_path):
-                    with open(ref_path, "r", encoding="utf-8") as rf:
-                        return rf.read().strip()
-            else:
-                return content
-    except Exception:
-        pass
-
-    return None
-
-
-def _installed_packages() -> dict[str, str | None]:
-    # Analisa importações de todos os arquivos .py do repositório
-    base_dir = os.getcwd()
-    stdlib_modules = set(getattr(sys, "stdlib_module_names", ()))
-    imported_modules: set[str] = set()
-    
-    # Ignora pastas de cache, ambiente virtual e logs do dagster
-    ignore_dirs = {".git", "__pycache__", ".venv", "venv", "env", ".dagster", "storage", "logs"}
-
-    for root, dirs, files in os.walk(base_dir):
-        dirs[:] = [d for d in dirs if d not in ignore_dirs]
-        for fn in files:
-            if not fn.endswith(".py"):
-                continue
-            path = os.path.join(root, fn)
-            try:
-                with open(path, "r", encoding="utf-8") as f:
-                    tree = ast.parse(f.read(), filename=path)
-            except Exception:
-                continue
-
-            for node in ast.walk(tree):
-                if isinstance(node, ast.Import):
-                    for alias in node.names:
-                        root_name = alias.name.split(".", 1)[0]
-                        imported_modules.add(root_name)
-                elif isinstance(node, ast.ImportFrom):
-                    if node.level and node.module is None:
-                        continue
-                    if node.module:
-                        root_name = node.module.split(".", 1)[0]
-                        imported_modules.add(root_name)
-
-    deps: dict[str, str | None] = {}
-    module_to_distributions = importlib.metadata.packages_distributions()
-    
-    for module_name in sorted(imported_modules):
-        if not module_name or module_name in stdlib_modules:
-            continue
-        dist_names = module_to_distributions.get(module_name) or [module_name]
-        for dist_name in dist_names:
-            try:
-                deps[dist_name] = importlib.metadata.version(dist_name)
-            except importlib.metadata.PackageNotFoundError:
-                deps.setdefault(dist_name, None)
-            except Exception:
-                deps.setdefault(dist_name, None)
-
-    if deps:
-        return deps
-
-    # Fallback se não encontrar imports
-    return {
-        dist.metadata["Name"]: dist.metadata.get("Version")
-        for dist in importlib.metadata.distributions()
-        if dist.metadata.get("Name")
-    }
+from core_provenance.utils import definition_hash, filter_secrets, git_hash, installed_packages
 
 
 class ProvenanceResource(ConfigurableResource):
@@ -144,54 +50,20 @@ class ProvenanceResource(ConfigurableResource):
                 """)
             conn.commit()
 
-    def _definition_hash(self) -> str | None:
-        # Gera o hash dinâmico baseado em todo o repositório de código
-        try:
-            base = os.getcwd()
-            h = hashlib.sha1()
-            ignore_dirs = {".git", "__pycache__", ".venv", "venv", "env", ".dagster", "storage", "logs"}
-            
-            for root, dirs, files in os.walk(base):
-                dirs[:] = [d for d in dirs if d not in ignore_dirs]
-                for fn in sorted(files):
-                    if not fn.endswith(".py"):
-                        continue
-                    path = os.path.join(root, fn)
-                    try:
-                        with open(path, "rb") as f:
-                            h.update(f.read())
-                    except Exception:
-                        pass
-            return h.hexdigest()
-        except Exception:
-            return None
-
     def record_start(self, run_id: str, job_name: str | None = None, run_config: dict | None = None, start_time: float | None = None) -> None:
         self.setup_schema()
-        asset_graph_hash = self._definition_hash()
+        asset_graph_hash = definition_hash()
         config_fingerprint = None
         filtered_run_config = None
 
         if run_config is not None:
             try:
                 config_fingerprint = hashlib.sha1(str(run_config).encode("utf-8")).hexdigest()
-                def _filter(obj: Any) -> Any:
-                    if isinstance(obj, dict):
-                        out: dict = {}
-                        for k in sorted(obj.keys()):
-                            kl = k.lower()
-                            if any(s in kl for s in ("pass", "secret", "token", "key", "cred")):
-                                continue
-                            out[k] = _filter(obj[k])
-                        return out
-                    if isinstance(obj, list):
-                        return [_filter(x) for x in obj]
-                    return obj
-                filtered_run_config = _filter(run_config)
+                filtered_run_config = filter_secrets(run_config)
             except Exception:
                 pass
 
-        deps = _installed_packages()
+        deps = installed_packages()
 
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
@@ -217,7 +89,7 @@ class ProvenanceResource(ConfigurableResource):
                     self.environment,
                     sys.version,
                     Json(deps),
-                    _git_hash(),
+                    git_hash(),
                     job_name,
                     asset_graph_hash,
                     config_fingerprint,
@@ -336,3 +208,15 @@ class ProvenanceResource(ConfigurableResource):
                 """,
                 (run_id, asset_key, asset_code, return_type, Json(upstream_assets), finished_at),
             )
+
+    def record_config_asset(self, run_id: str, run_config: dict) -> None:
+        if not run_config:
+            return
+        self.record_asset_output(
+            run_id=run_id,
+            asset_key="config",
+            asset_code=None,
+            return_value=filter_secrets(run_config),
+            return_type="RunConfig",
+            upstream_assets=[],
+        )

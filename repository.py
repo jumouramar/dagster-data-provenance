@@ -1,5 +1,3 @@
-import os
-
 from dagster import Definitions, load_assets_from_modules
 
 from pipeline_random_calculator.assets import mean_calculator as random_assets
@@ -11,13 +9,12 @@ from weather_daily.assets.transform import transform_weather
 from weather_daily.assets.load import load_weather
 from weather_daily.jobs.weather_rj import weather_daily, weather_daily_schedule
 
-from core_provenance.sensors.provenance_sensor import (
+from core_provenance.sensors import (
     provenance_start_sensor,
     provenance_success_sensor,
     provenance_failure_sensor,
-    get_provenance_resource,
 )
-from core_provenance.resources.provenance_io_manager import ProvenanceIOManager
+from core_provenance.utils import make_provenance_resource, make_provenance_io_manager
 
 defs = Definitions(
     assets=[
@@ -35,14 +32,7 @@ defs = Definitions(
         provenance_failure_sensor,
     ],
     resources={
-        "provenance": get_provenance_resource(),
-        "io_manager": ProvenanceIOManager(
-            host=os.getenv("PROVENANCE_HOST", "postgres"),
-            port=int(os.getenv("PROVENANCE_PORT", "5432")),
-            dbname=os.getenv("PROVENANCE_DB", "dagster"),
-            user=os.getenv("PROVENANCE_USER", "dagster"),
-            password=os.getenv("PROVENANCE_PASSWORD", "dagster"),
-            environment=os.getenv("ENVIRONMENT", "development"),
-        ),
+        "provenance": make_provenance_resource(),
+        "io_manager": make_provenance_io_manager(),
     },
 )
