@@ -1,5 +1,5 @@
 from dagster import asset
-from utils.clients.postgres import PostgresClient
+from pipelines.weather_daily.clients.postgres import PostgresClient
 import settings
 
 _db = PostgresClient(**settings.POSTGRES_CONN)
