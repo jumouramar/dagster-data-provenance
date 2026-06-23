@@ -5,8 +5,9 @@ import inspect
 import os
 import subprocess
 import sys
-
 import settings
+from core_provenance.resources.provenance import ProvenanceResource
+from core_provenance.resources.provenance_io_manager import ProvenanceIOManager
 
 IGNORE_DIRS = {".git", "__pycache__", ".venv", "venv", "env", ".dagster", "storage", "logs"}
 
@@ -149,8 +150,6 @@ def filter_secrets(obj):
 
 
 def make_provenance_resource():
-    from core_provenance.resources.provenance import ProvenanceResource
-
     return ProvenanceResource(
         host=settings.POSTGRES_HOST,
         port=settings.POSTGRES_PORT,
@@ -162,8 +161,6 @@ def make_provenance_resource():
 
 
 def make_provenance_io_manager():
-    from core_provenance.resources.provenance_io_manager import ProvenanceIOManager
-
     return ProvenanceIOManager(
         host=settings.POSTGRES_HOST,
         port=settings.POSTGRES_PORT,
