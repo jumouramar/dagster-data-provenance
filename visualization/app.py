@@ -3,7 +3,7 @@ import tempfile
 
 import streamlit as st
 
-from visualization.db import get_assets_for_run, get_job_names, get_run_ids
+from visualization.db import get_assets_for_run, get_job_names, get_run_environment, get_run_ids
 from visualization.graph import build_graph
 
 st.set_page_config(
@@ -109,7 +109,7 @@ with col_detail:
 
     st.markdown(f'<div class="asset-title">{asset["asset_key"]}</div>', unsafe_allow_html=True)
 
-    tab_code, tab_meta, tab_output = st.tabs(["source", "meta", "output"])
+    tab_code, tab_meta, tab_output, tab_env = st.tabs(["source", "meta", "output", "env"])
 
     with tab_code:
         if asset["asset_code"]:
@@ -146,3 +146,35 @@ with col_detail:
             st.json(rv)
         else:
             st.json({"value": rv})
+
+    with tab_env:
+        env = get_run_environment(asset["run_id"])
+        if env is None:
+            st.caption("Informações de ambiente não disponíveis para este run.")
+        else:
+            st.markdown('<div class="meta-label">language</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="meta-value">Python {env["python_version"]}</div>', unsafe_allow_html=True)
+
+            st.markdown('<div class="meta-label">environment</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="meta-value">{env["environment_name"]}</div>', unsafe_allow_html=True)
+
+            st.markdown('<div class="meta-label">git_hash</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="meta-value">{env["git_hash"] or "—"}</div>', unsafe_allow_html=True)
+
+            st.markdown('<div class="meta-label">asset_graph_hash</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="meta-value">{env["asset_graph_hash"] or "—"}</div>', unsafe_allow_html=True)
+
+            st.markdown('<div class="meta-label">status</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="meta-value">{env["status"] or "—"}</div>', unsafe_allow_html=True)
+
+            st.markdown('<div class="meta-label">started_at</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="meta-value">{env["started_at"] or "—"}</div>', unsafe_allow_html=True)
+
+            if env["duration_ms"] is not None:
+                st.markdown('<div class="meta-label">duration</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="meta-value">{env["duration_ms"]} ms</div>', unsafe_allow_html=True)
+
+            if env["dependencies"]:
+                st.divider()
+                st.markdown('<div class="meta-label">dependencies</div>', unsafe_allow_html=True)
+                st.json(env["dependencies"])

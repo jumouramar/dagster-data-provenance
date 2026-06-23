@@ -66,6 +66,35 @@ def get_job_names() -> list[str]:
     return [r[0] for r in rows]
 
 
+def get_run_environment(run_id: str) -> dict | None:
+    query = text("""
+        SELECT python_version, git_hash, environment_name, asset_graph_hash,
+               dependencies, started_at, finished_at, duration_ms, status
+        FROM pipeline_provenance
+        WHERE run_id = :run_id
+    """)
+    try:
+        with _engine().connect() as conn:
+            row = conn.execute(query, {"run_id": run_id}).fetchone()
+    except ProgrammingError as e:
+        if isinstance(e.orig, psycopg2.errors.UndefinedTable):
+            return None
+        raise
+    if row is None:
+        return None
+    return {
+        "python_version":  row[0],
+        "git_hash":        row[1],
+        "environment_name": row[2],
+        "asset_graph_hash": row[3],
+        "dependencies":    row[4] if isinstance(row[4], dict) else {},
+        "started_at":      str(row[5]) if row[5] else None,
+        "finished_at":     str(row[6]) if row[6] else None,
+        "duration_ms":     row[7],
+        "status":          row[8],
+    }
+
+
 def get_assets_for_run(run_id: str) -> list[dict]:
     if run_id == "__all__":
         query = text("""
