@@ -28,9 +28,6 @@ def provenance_success_sensor(context: RunStatusSensorContext):
 
         prov.record_success(run_id=run.run_id, start_time=start_time, end_time=end_time)
 
-        # Fallback: ASSET_MATERIALIZATION é emitido para TODOS os assets,
-        # inclusive os com -> None onde o IOManager não é chamado (sem HANDLED_OUTPUT).
-        # ON CONFLICT DO NOTHING preserva dados do IOManager (com return_value).
         key_to_def: dict[str, tuple] = {}
         try:
             for asset_key, assets_def in context.repository_def.assets_defs_by_key.items():
