@@ -1,6 +1,6 @@
 from dagster import asset
 
-from weather_daily.src.transform_weather_daily import TransformWeatherDaily
+from pipelines.weather_daily.src.transform_weather_daily import TransformWeatherDaily
 
 _transformer = TransformWeatherDaily()
 

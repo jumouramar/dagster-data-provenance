@@ -1,6 +1,6 @@
 from dagster import RunConfig, ScheduleDefinition, define_asset_job
 
-from weather_daily.config import WeatherExtractConfig
+from pipelines.weather_daily.config import WeatherExtractConfig
 
 _RIO_DE_JANEIRO = WeatherExtractConfig(
     city="Rio de Janeiro",

@@ -1,7 +1,7 @@
 from dagster import asset
 from pydantic import ValidationError
 
-from weather_daily.models.open_meteo import OpenMeteoForecastResponse
+from pipelines.weather_daily.models.open_meteo import OpenMeteoForecastResponse
 
 
 @asset(group_name="weather")

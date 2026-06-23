@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from dagster import AssetExecutionContext, asset
 from utils.clients.open_meteo import OpenMeteoClient
 
-from weather_daily.config import WeatherExtractConfig
+from pipelines.weather_daily.config import WeatherExtractConfig
 
 
 @asset(group_name="weather")
